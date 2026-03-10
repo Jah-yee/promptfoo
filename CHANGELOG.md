@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.121.2](https://github.com/promptfoo/promptfoo/compare/0.121.1...0.121.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* **deps:** update mui packages to ^7.3.9 ([#8077](https://github.com/promptfoo/promptfoo/issues/8077)) ([4db1d67](https://github.com/promptfoo/promptfoo/commit/4db1d67b081a4180d099cbff63978713326fb8e9))
+* **examples:** use matching gpt-4o model in temperature comparison ([#8074](https://github.com/promptfoo/promptfoo/issues/8074)) ([516df96](https://github.com/promptfoo/promptfoo/commit/516df96042d5fdec7522548b1f30b6eb7c58704b))
+* not-contains-json with schema respects inverse flag ([#8069](https://github.com/promptfoo/promptfoo/issues/8069)) ([baf5e1b](https://github.com/promptfoo/promptfoo/commit/baf5e1bfda95cc7b9d53642a9e9c265489826307))
+* prevent caching error responses in fetchWithCache ([#8070](https://github.com/promptfoo/promptfoo/issues/8070)) ([033e1bb](https://github.com/promptfoo/promptfoo/commit/033e1bb688cf1054961f94d6563b904c8d14cab3))
+* **providers:** align openclaw with upstream gateway ([#8058](https://github.com/promptfoo/promptfoo/issues/8058)) ([f130803](https://github.com/promptfoo/promptfoo/commit/f1308031752870233b8f0b2b35137ecd7c3a76d2))
+* **providers:** omit default temperature for LiteLLM proxy provider ([#8064](https://github.com/promptfoo/promptfoo/issues/8064)) ([f831d39](https://github.com/promptfoo/promptfoo/commit/f831d399b5dc0bf131305e9eff4ffadbbd79881c))
+
 ## [0.121.1](https://github.com/promptfoo/promptfoo/compare/0.121.0...0.121.1) (2026-03-09)
 
 ### Bug Fixes
