@@ -16,7 +16,7 @@ async function generateCompositePrompts(
 ): Promise<TestCase[]> {
   let progressBar: SingleBar | undefined;
   try {
-    const concurrency = 10;
+    const concurrency = 3; // Reduced from 10 to avoid Cloudflare WAF rate limiting
     let allResults: TestCase[] = [];
 
     if (logger.level !== 'debug') {
