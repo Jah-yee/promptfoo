@@ -284,7 +284,7 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
     // Handle reasoning parameters for o-series and gpt-5 models
     // Note: reasoning_effort is deprecated and has been moved to reasoning.effort
     // Include reasoning if explicitly configured OR if model is detected as reasoning model
-    if (config.reasoning && (this.isReasoningModel() || config.reasoning.effort || config.reasoning.verbosity)) {
+    if (config.reasoning && (config.reasoning.effort || config.reasoning.verbosity || this.isReasoningModel())) {
       body.reasoning = config.reasoning;
     }
 
