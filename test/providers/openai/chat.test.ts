@@ -1815,6 +1815,38 @@ Therefore, there are 2 occurrences of the letter "r" in "strawberry".\n\nThere a
       expect(regularBody.reasoning_effort).toBeUndefined();
     });
 
+    it('should include reasoning config for Azure-hosted custom deployments only', async () => {
+      const mockResponse = {
+        data: {
+          choices: [{ message: { content: 'Test output' } }],
+          usage: { total_tokens: 10, prompt_tokens: 5, completion_tokens: 5 },
+        },
+        cached: false,
+        status: 200,
+        statusText: 'OK',
+      };
+      mockFetchWithCache.mockResolvedValue(mockResponse);
+
+      const azureProvider = new OpenAiChatCompletionProvider('my-custom-deployment', {
+        config: {
+          apiBaseUrl: 'https://my-resource.openai.azure.com/openai/v1',
+          reasoning_effort: 'high',
+          max_completion_tokens: 2000,
+          max_tokens: 1000,
+          verbosity: 'high',
+          reasoning: { effort: 'high' },
+        } as any,
+      });
+
+      const { body } = await azureProvider.getOpenAiBody('Test prompt');
+      expect(body.reasoning_effort).toBe('high');
+      expect(body.reasoning).toEqual({ effort: 'high' });
+      expect(body.verbosity).toBe('high');
+      expect(body.max_completion_tokens).toBe(2000);
+      expect(body.max_tokens).toBeUndefined();
+      expect(body.temperature).toBeUndefined();
+    });
+
     it('should handle o4-mini with reasoning_effort and service_tier', async () => {
       const mockResponse = {
         data: {
@@ -2390,10 +2422,10 @@ Therefore, there are 2 occurrences of the letter "r" in "strawberry".\n\nThere a
         // Provider should not require API key
         expect(provider.requiresApiKey()).toBe(false);
       } finally {
-        if (originalEnv !== undefined) {
-          process.env.CUSTOM_LOCAL_API_KEY = originalEnv;
-        } else {
+        if (originalEnv === undefined) {
           delete process.env.CUSTOM_LOCAL_API_KEY;
+        } else {
+          process.env.CUSTOM_LOCAL_API_KEY = originalEnv;
         }
       }
     });

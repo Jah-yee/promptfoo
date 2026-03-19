@@ -65,6 +65,19 @@ export class OpenAiGenericProvider implements ApiProvider {
     );
   }
 
+  protected isAzureOpenAIEndpoint(): boolean {
+    try {
+      const hostname = new URL(this.getApiUrl()).hostname.toLowerCase();
+      return (
+        hostname.endsWith('.openai.azure.com') ||
+        hostname.endsWith('.services.ai.azure.com') ||
+        hostname.endsWith('.cognitiveservices.azure.com')
+      );
+    } catch {
+      return false;
+    }
+  }
+
   getApiKey(): string | undefined {
     return (
       this.config.apiKey ||

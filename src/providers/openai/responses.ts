@@ -188,19 +188,27 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
     }
 
     const isReasoningModel = this.isReasoningModel();
+    const useAzureReasoningConfig =
+      this.isAzureOpenAIEndpoint() &&
+      (config.reasoning_effort !== undefined ||
+        config.reasoning?.effort !== undefined ||
+        config.reasoning?.verbosity !== undefined ||
+        config.verbosity !== undefined);
+    const treatAsReasoningModel = isReasoningModel || useAzureReasoningConfig;
     const maxOutputTokens =
       config.max_output_tokens ??
-      (isReasoningModel
+      (treatAsReasoningModel
         ? getEnvInt('OPENAI_MAX_COMPLETION_TOKENS')
         : getEnvInt('OPENAI_MAX_TOKENS', 1024));
 
-    const temperature = this.supportsTemperature()
-      ? (config.temperature ?? getEnvFloat('OPENAI_TEMPERATURE', 0))
-      : undefined;
-    // Include reasoning_effort if explicitly configured OR if model is detected as reasoning model
-    const reasoningEffort = (isReasoningModel || config.reasoning_effort)
-      ? (renderVarsInObject(config.reasoning_effort, context?.vars) as ReasoningEffort)
-      : undefined;
+    const temperature =
+      !treatAsReasoningModel && this.supportsTemperature()
+        ? (config.temperature ?? getEnvFloat('OPENAI_TEMPERATURE', 0))
+        : undefined;
+    const reasoningEffort =
+      treatAsReasoningModel && config.reasoning_effort !== undefined
+        ? (renderVarsInObject(config.reasoning_effort, context?.vars) as ReasoningEffort)
+        : undefined;
 
     const instructions = config.instructions;
 
@@ -241,8 +249,7 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
       textFormat = { format: { type: 'text' } };
     }
 
-    // Add verbosity for GPT-5 models or when explicitly configured
-    if ((this.isGPT5Model() || config.verbosity) && config.verbosity) {
+    if (config.verbosity && (this.isGPT5Model() || useAzureReasoningConfig)) {
       textFormat = { ...textFormat, verbosity: config.verbosity };
     }
 
@@ -255,9 +262,9 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
     const body = {
       model: this.modelName,
       input,
-      ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
+      ...(maxOutputTokens === undefined ? {} : { max_output_tokens: maxOutputTokens }),
       ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
-      ...(temperature !== undefined ? { temperature } : {}),
+      ...(temperature === undefined ? {} : { temperature }),
       ...(instructions ? { instructions } : {}),
       ...((!reasoningEffort || reasoningEffort === 'none') &&
       (config.top_p !== undefined || getEnvString('OPENAI_TOP_P'))
@@ -281,10 +288,10 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
       ...(config.passthrough || {}),
     };
 
-    // Handle reasoning parameters for o-series and gpt-5 models
-    // Note: reasoning_effort is deprecated and has been moved to reasoning.effort
-    // Include reasoning if explicitly configured OR if model is detected as reasoning model
-    if (config.reasoning && (config.reasoning.effort || config.reasoning.verbosity || this.isReasoningModel())) {
+    if (
+      config.reasoning &&
+      (config.reasoning.effort || config.reasoning.verbosity || treatAsReasoningModel)
+    ) {
       body.reasoning = config.reasoning;
     }
 
