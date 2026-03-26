@@ -217,6 +217,124 @@ function detectMimeFromBase64(base64Data: string): string | null {
  *                         evaluated by Promptfoo's template engine before reaching the target.
  * @returns The rendered prompt string
  */
+/**
+ * Recursively processes file:// references in nested objects.
+ * This enables file loading for vars with nested structures like:
+ * { reporting_period: { previous: { report: 'file://data/file.txt' } } }
+ */
+async function processFileReferencesInObject(
+  obj: Record<string, VarValue>,
+  basePrompt: string,
+  vars: Record<string, VarValue>,
+  provider?: ApiProvider,
+): Promise<void> {
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string' && value.startsWith('file://')) {
+      // Load the file content
+      const basePath = cliState.basePath || '';
+      const filePath = path.resolve(process.cwd(), basePath, value.slice('file://'.length));
+      const fileExtension = filePath.split('.').pop();
+
+      logger.debug(`Loading nested var ${key} from file: ${filePath}`);
+      if (isJavascriptFile(filePath)) {
+        const javascriptOutput = (await (
+          await importModule(filePath)
+        )(key, basePrompt, vars, provider)) as {
+          output?: string;
+          error?: string;
+        };
+        if (javascriptOutput.error) {
+          throw new Error(`Error running ${filePath}: ${javascriptOutput.error}`);
+        }
+        if (!javascriptOutput.output) {
+          throw new Error(
+            `Expected ${filePath} to return { output: string } but got ${javascriptOutput}`,
+          );
+        }
+        obj[key] = javascriptOutput.output;
+      } else if (fileExtension === 'py') {
+        const pythonScriptOutput = (await runPython(filePath, 'get_var', [
+          key,
+          basePrompt,
+          vars,
+        ])) as { output?: unknown; error?: string };
+        if (pythonScriptOutput.error) {
+          throw new Error(`Error running Python script ${filePath}: ${pythonScriptOutput.error}`);
+        }
+        if (!pythonScriptOutput.output) {
+          throw new Error(`Python script ${filePath} did not return any output`);
+        }
+        invariant(
+          typeof pythonScriptOutput.output === 'string',
+          `pythonScriptOutput.output must be a string. Received: ${typeof pythonScriptOutput.output}`,
+        );
+        obj[key] = pythonScriptOutput.output.trim();
+      } else if (fileExtension === 'yaml' || fileExtension === 'yml') {
+        obj[key] = JSON.stringify(
+          yaml.load(fs.readFileSync(filePath, 'utf8')) as string | object,
+        );
+      } else if (fileExtension === 'pdf' && !getEnvBool('PROMPTFOO_DISABLE_PDF_AS_TEXT')) {
+        telemetry.record('feature_used', {
+          feature: 'extract_text_from_pdf',
+        });
+        obj[key] = await extractTextFromPDF(filePath);
+      } else if (
+        (isImageFile(filePath) || isVideoFile(filePath) || isAudioFile(filePath)) &&
+        !getEnvBool('PROMPTFOO_DISABLE_MULTIMEDIA_AS_BASE64')
+      ) {
+        const fileType = isImageFile(filePath)
+          ? 'image'
+          : isVideoFile(filePath)
+            ? 'video'
+            : 'audio';
+
+        telemetry.record('feature_used', {
+          feature: `load_${fileType}_as_base64`,
+        });
+
+        logger.debug(`Loading ${fileType} as base64: ${filePath}`);
+        try {
+          const fileBuffer = fs.readFileSync(filePath);
+          const base64Data = fileBuffer.toString('base64');
+
+          if (fileType === 'image') {
+            let mimeType = getMimeTypeFromExtension(path.extname(filePath));
+            const extension = path.extname(filePath);
+            const extensionWasUnknown = !extension || mimeType === 'image/jpeg';
+
+            const detectedType = detectMimeFromBase64(base64Data);
+            if (detectedType) {
+              if (detectedType !== mimeType) {
+                logger.debug(
+                  `Magic number detection overriding extension-based MIME type: ${detectedType} (was ${mimeType}) for ${filePath}`,
+                );
+                mimeType = detectedType;
+              }
+            } else if (extensionWasUnknown) {
+              logger.warn(
+                `Could not detect image format for ${filePath}, defaulting to image/jpeg. Supported formats: JPEG, PNG, GIF, WebP, BMP, TIFF, ICO, AVIF, HEIC, SVG`,
+              );
+            }
+
+            obj[key] = `data:${mimeType};base64,${base64Data}`;
+          } else {
+            obj[key] = base64Data;
+          }
+        } catch (error) {
+          throw new Error(
+            `Failed to load ${fileType} ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      } else {
+        obj[key] = fs.readFileSync(filePath, 'utf8').trim();
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      // Recursively process nested objects
+      await processFileReferencesInObject(value as Record<string, VarValue>, basePrompt, vars, provider);
+    }
+  }
+}
+
 export async function renderPrompt(
   prompt: Prompt,
   vars: Record<string, VarValue>,
@@ -227,6 +345,9 @@ export async function renderPrompt(
   const nunjucks = getNunjucksEngine(nunjucksFilters);
 
   let basePrompt = prompt.raw;
+
+  // Load files - including nested objects
+  await processFileReferencesInObject(vars, basePrompt, vars, provider);
 
   // Load files
   for (const [varName, value] of Object.entries(vars)) {
