@@ -270,9 +270,7 @@ async function processFileReferencesInObject(
         );
         obj[key] = pythonScriptOutput.output.trim();
       } else if (fileExtension === 'yaml' || fileExtension === 'yml') {
-        obj[key] = JSON.stringify(
-          yaml.load(fs.readFileSync(filePath, 'utf8')) as string | object,
-        );
+        obj[key] = JSON.stringify(yaml.load(fs.readFileSync(filePath, 'utf8')) as string | object);
       } else if (fileExtension === 'pdf' && !getEnvBool('PROMPTFOO_DISABLE_PDF_AS_TEXT')) {
         telemetry.record('feature_used', {
           feature: 'extract_text_from_pdf',
@@ -330,7 +328,12 @@ async function processFileReferencesInObject(
       }
     } else if (typeof value === 'object' && value !== null) {
       // Recursively process nested objects
-      await processFileReferencesInObject(value as Record<string, VarValue>, basePrompt, vars, provider);
+      await processFileReferencesInObject(
+        value as Record<string, VarValue>,
+        basePrompt,
+        vars,
+        provider,
+      );
     }
   }
 }
