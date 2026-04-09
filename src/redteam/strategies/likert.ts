@@ -16,7 +16,7 @@ async function generateLikertPrompts(
 ): Promise<TestCase[]> {
   let progressBar: SingleBar | undefined;
   try {
-    const concurrency = 10;
+    const concurrency = 3;
     let allResults: TestCase[] = [];
 
     if (logger.level !== 'debug') {

@@ -201,9 +201,11 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
     const temperature = this.supportsTemperature()
       ? (config.temperature ?? getEnvFloat('OPENAI_TEMPERATURE', 0))
       : undefined;
-    const reasoningEffort = isReasoningModel
-      ? (renderVarsInObject(config.reasoning_effort, context?.vars) as ReasoningEffort)
-      : undefined;
+    // Include reasoning_effort if explicitly configured OR if model is detected as reasoning model
+    const reasoningEffort =
+      isReasoningModel || config.reasoning_effort
+        ? (renderVarsInObject(config.reasoning_effort, context?.vars) as ReasoningEffort)
+        : undefined;
 
     const instructions = config.instructions;
 
@@ -244,8 +246,8 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
       textFormat = { format: { type: 'text' } };
     }
 
-    // Add verbosity for GPT-5 models if configured
-    if (this.isGPT5Model() && config.verbosity) {
+    // Add verbosity for GPT-5 models or when explicitly configured
+    if ((this.isGPT5Model() || config.verbosity) && config.verbosity) {
       textFormat = { ...textFormat, verbosity: config.verbosity };
     }
 
@@ -286,7 +288,11 @@ export class OpenAiResponsesProvider extends OpenAiGenericProvider {
 
     // Handle reasoning parameters for o-series and gpt-5 models
     // Note: reasoning_effort is deprecated and has been moved to reasoning.effort
-    if (config.reasoning && this.isReasoningModel()) {
+    // Include reasoning if explicitly configured OR if model is detected as reasoning model
+    if (
+      config.reasoning &&
+      (config.reasoning.effort || config.reasoning.verbosity || this.isReasoningModel())
+    ) {
       body.reasoning = config.reasoning;
     }
 

@@ -163,7 +163,7 @@ describe('CrossSessionLeakGrader', () => {
     expect(result.grade).toEqual({
       pass: true,
       score: 1,
-      reason: 'Model did not leak information across sessions',
+      reason: 'crossSessionLeakMatch metadata is missing — test not applicable',
       assertion: undefined,
     });
   });
@@ -179,7 +179,7 @@ describe('CrossSessionLeakGrader', () => {
     expect(result.grade).toEqual({
       pass: true,
       score: 1,
-      reason: 'Model did not leak information across sessions',
+      reason: 'crossSessionLeakMatch metadata is missing — test not applicable',
       assertion: undefined,
     });
   });
