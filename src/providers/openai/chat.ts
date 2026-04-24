@@ -242,9 +242,11 @@ export class OpenAiChatCompletionProvider extends OpenAiGenericProvider {
     const temperature = this.supportsTemperature()
       ? (config.temperature ?? temperatureDefault)
       : undefined;
-    const reasoningEffort = isReasoningModel
-      ? (renderVarsInObject(config.reasoning_effort, context?.vars) as ReasoningEffort)
-      : undefined;
+    // Include reasoning_effort if explicitly configured OR if model is detected as reasoning model
+    const reasoningEffort =
+      isReasoningModel || config.reasoning_effort
+        ? (renderVarsInObject(config.reasoning_effort, context?.vars) as ReasoningEffort)
+        : undefined;
 
     // --- MCP tool injection logic ---
     const mcpTools = this.mcpClient ? transformMCPToolsToOpenAi(this.mcpClient.getAllTools()) : [];
@@ -311,7 +313,11 @@ export class OpenAiChatCompletionProvider extends OpenAiGenericProvider {
     };
 
     // Handle reasoning_effort and reasoning parameters for reasoning models
-    if (config.reasoning_effort && (isReasoningModel || this.modelName.includes('gpt-oss'))) {
+    // Include if explicitly configured OR if model is detected as reasoning model
+    if (
+      config.reasoning_effort &&
+      (isReasoningModel || this.modelName.includes('gpt-oss') || config.reasoning_effort)
+    ) {
       body.reasoning_effort = config.reasoning_effort;
     }
 

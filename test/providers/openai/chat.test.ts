@@ -1821,7 +1821,7 @@ Therefore, there are 2 occurrences of the letter "r" in "strawberry".\n\nThere a
       const o1Body = JSON.parse(o1Call[1].body);
       expect(o1Body.reasoning_effort).toBe('high');
 
-      // Test regular model (should not include reasoning_effort)
+      // Test regular model with explicit reasoning_effort
       mockFetchWithCache.mockClear();
       const regularProvider = new OpenAiChatCompletionProvider('gpt-4', {
         config: { reasoning_effort: 'high' } as any,
@@ -1829,7 +1829,7 @@ Therefore, there are 2 occurrences of the letter "r" in "strawberry".\n\nThere a
       await regularProvider.callApi('Test prompt');
       const regularCall = mockFetchWithCache.mock.calls[0] as [string, { body: string }];
       const regularBody = JSON.parse(regularCall[1].body);
-      expect(regularBody.reasoning_effort).toBeUndefined();
+      expect(regularBody.reasoning_effort).toBe('high');
     });
 
     it('should handle o4-mini with reasoning_effort and service_tier', async () => {
